@@ -42,4 +42,13 @@ namespace units {
 
   }
 
+
+  namespace details {
+    template<>
+    inline icu::MeasureUnit* create_icu_unit<ampere>(UErrorCode& uc)
+    {
+      return icu::MeasureUnit::createAmpere(uc);
+    }
+  }  // namespace details
+
 }  // namespace units

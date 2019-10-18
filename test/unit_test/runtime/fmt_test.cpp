@@ -20,36 +20,23 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma once
+#include "units/dimensions/area.h"
+#include "units/dimensions/frequency.h"
+#include "units/dimensions/power.h"
+#include "units/dimensions/velocity.h"
+#include "units/dimensions/volume.h"
+#include "units/math.h"
+#include <catch2/catch.hpp>
+#include <fmt/locale.h>
 
-#include <units/dimensions/si_base_dimensions.h>
-#include <units/dimensions/mass.h>
-#include <units/dimensions/acceleration.h>
+using namespace units;
 
-namespace units {
-
-  struct force : derived_dimension<force, exp<base_dim_mass, 1>, exp<acceleration, 1>> {};
-
-  template<typename T>
-  concept Force =  QuantityOf<T, force>;
-
-  struct newton : coherent_derived_unit<newton, "N", force, si_prefix> {};
-
-  inline namespace literals {
-
-    // N
-    constexpr auto operator""N(unsigned long long l) { return quantity<newton, std::int64_t>(l); }
-    constexpr auto operator""N(long double l) { return quantity<newton, long double>(l); }
-
-  }  // namespace literals
-
-
-  namespace details {
-    template<>
-    inline icu::MeasureUnit* create_icu_unit<newton>(UErrorCode& uc)
-    {
-      return icu::MeasureUnit::createNewton(uc);
-    }
-  }  // namespace details
-
-}  // namespace units
+TEST_CASE("fmt on a quantity", "[text][fmt]")
+{
+  SECTION("quantity with a predefined unit")
+  {
+    std::locale ru_loc("ru_RU.UTF-8");
+    REQUIRE(fmt::format(ru_loc, "{}", 2sq_m) == "2 м²");
+    REQUIRE(fmt::format("{}", 2GHz) == "2 GHz");
+  }
+}
