@@ -31,13 +31,13 @@ namespace units {
 template<Dimension D, UnitOf<D> U, QuantityValue Rep>
 class quantity;
 
-template<Dimension D, UnitOf<D> U, QuantityValue Rep>
+template<Dimension D, UnitOf<D> U, QuantityValue Rep, PointOrigin Orig>
 class quantity_point;
 
 template<Kind K, UnitOf<typename K::dimension> U, QuantityValue Rep>
 class quantity_kind;
 
-template<PointKind PK, UnitOf<typename PK::dimension> U, QuantityValue Rep>
+template<PointKind PK, UnitOf<typename PK::dimension> U, QuantityValue Rep, PointOrigin Orig>
 class quantity_point_kind;
 
 namespace detail {
@@ -96,12 +96,13 @@ struct common_type<Q1, Q2> {
 };
 
 template<units::QuantityPoint QP1, units::QuantityPointEquivalentTo<QP1> QP2>
-  requires requires { typename common_type_t<typename QP1::rep, typename QP2::rep>; }
+  requires(requires { typename common_type_t<typename QP1::rep, typename QP2::rep>; } &&
+           std::is_same_v<typename QP1::origin, typename QP2::origin>)
 struct common_type<QP1, QP2> {
-  using type = units::quantity_point<
-    typename common_type_t<typename QP1::quantity_type, typename QP2::quantity_type>::dimension,
+  using type = units::quantity_point<typename common_type_t<typename QP1::quantity_type, typename QP2::quantity_type>::dimension,
     typename common_type_t<typename QP1::quantity_type, typename QP2::quantity_type>::unit,
-    typename common_type_t<typename QP1::quantity_type, typename QP2::quantity_type>::rep>;
+    typename common_type_t<typename QP1::quantity_type, typename QP2::quantity_type>::rep,
+    typename QP1::origin>;
 };
 
 template<units::QuantityKind QK1, units::QuantityKindEquivalentTo<QK1> QK2>
@@ -113,11 +114,13 @@ struct common_type<QK1, QK2> {
 };
 
 template<units::QuantityPointKind QPK1, units::QuantityPointKindEquivalentTo<QPK1> QPK2>
-  requires requires { typename common_type_t<typename QPK1::rep, typename QPK2::rep>; }
+  requires (requires { typename common_type_t<typename QPK1::rep, typename QPK2::rep>; } &&
+            std::is_same_v<typename QPK1::origin, typename QPK2::origin>)
 struct common_type<QPK1, QPK2> {
   using type = units::quantity_point_kind<typename QPK1::point_kind_type,
     typename common_type_t<typename QPK1::quantity_kind_type, typename QPK2::quantity_kind_type>::unit,
-    typename common_type_t<typename QPK1::quantity_kind_type, typename QPK2::quantity_kind_type>::rep>;
+    typename common_type_t<typename QPK1::quantity_kind_type, typename QPK2::quantity_kind_type>::rep,
+    typename QPK1::origin>;
 };
 
-}
+}  // namespace std

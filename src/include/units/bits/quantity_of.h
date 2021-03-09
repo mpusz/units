@@ -24,6 +24,7 @@
 
 #include <units/bits/dimension_op.h>
 #include <units/bits/equivalent.h>
+#include <units/bits/point_origin_reference.h>
 
 namespace units {
 
@@ -94,12 +95,21 @@ template<typename QP, typename Dim>
 concept QuantityPointOf = QuantityPoint<QP> && Dimension<Dim> && equivalent<typename QP::dimension, Dim>;
 
 /**
+ * @brief A concept matching all quantity points that can be referred to the specified origin point.
+ *
+ * Satisfied by all quantity points whose origin is ultimately referred to the same origin as the ultimate
+ * reference of the requested origin point.
+ */
+template<typename QP, typename Orig>
+concept QuantityPointReferableTo = QuantityPoint<QP> && PointOrigin<Orig> && fixed_known_offset<typename QP::origin, Orig>;
+
+/**
  * @brief A concept matching two equivalent quantity points
  *
- * Satisfied by quantity points having equivalent dimensions.
+ * Satisfied by quantity points having equivalent dimensions and the same reference point
  */
 template<typename QP1, typename QP2>
-concept QuantityPointEquivalentTo = QuantityPoint<QP1> && QuantityPointOf<QP2, typename QP1::dimension>;
+concept QuantityPointEquivalentTo = QuantityPoint<QP1> && QuantityPointOf<QP2, typename QP1::dimension> && std::is_same_v<typename QP2::origin, typename QP1::origin>;
 
 /**
  * @brief A concept matching only quantity kinds of a specific kind.
@@ -130,10 +140,10 @@ concept QuantityPointKindOf = QuantityPointKind<QPK> && PointKind<PK> && equival
 /**
  * @brief A concept matching two equivalent quantity point kinds
  *
- * Satisfied by quantity point kinds having equivalent kinds.
+ * Satisfied by quantity point kinds having equivalent kinds and the same reference point.
  */
 template<typename QPK1, typename QPK2>
 concept QuantityPointKindEquivalentTo =
-  QuantityPointKind<QPK1> && QuantityPointKindOf<QPK2, typename QPK1::point_kind_type>;
+  QuantityPointKind<QPK1> && QuantityPointKindOf<QPK2, typename QPK1::point_kind_type>  && std::is_same_v<typename QPK2::origin, typename QPK1::origin>;
 
 }  // namespace units

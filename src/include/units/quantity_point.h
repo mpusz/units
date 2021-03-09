@@ -24,6 +24,7 @@
 #pragma once
 
 #include <units/quantity.h>
+#include <units/origin.h>
 #include <compare>
 
 namespace units {
@@ -36,14 +37,16 @@ namespace units {
  * @tparam D a dimension of the quantity point (can be either a BaseDimension or a DerivedDimension)
  * @tparam U a measurement unit of the quantity point
  * @tparam Rep a type to be used to represent values of a quantity point
+ * @tparam Orig an abstract origin point with respect to which to define the quantity point
  */
-template<Dimension D, UnitOf<D> U, QuantityValue Rep = double>
+template<Dimension D, UnitOf<D> U, QuantityValue Rep = double, PointOrigin Orig = default_point_origin<typename dimension_unit<D>::reference>>
 class quantity_point {
 public:
   using quantity_type = quantity<D, U, Rep>;
   using dimension = typename quantity_type::dimension;
   using unit = typename quantity_type::unit;
   using rep = typename quantity_type::rep;
+  using origin = Orig;
 
 private:
   quantity_type q_{};
@@ -65,12 +68,15 @@ public:
 
   template<QuantityPointLike QP>
   constexpr explicit quantity_point(const QP& qp)
-    requires std::is_constructible_v<quantity_type, decltype(quantity_point_like_traits<QP>::relative(qp))>
+    requires (
+          std::is_constructible_v<quantity_type, decltype(quantity_point_like_traits<QP>::relative(qp))>
+            && std::is_same_v<origin, typename quantity_point_like_traits<QP>::origin> )
     : q_{quantity_point_like_traits<QP>::relative(qp)} {}
 
-  template<QuantityPoint QP2>
-    requires std::is_convertible_v<typename QP2::quantity_type, quantity_type>
-  constexpr quantity_point(const QP2& qp) : q_{qp.relative()} {}
+  template<QuantityPoint QP>
+    requires ( std::is_convertible_v<typename QP::quantity_type, quantity_type>
+        && std::is_same_v<origin, typename QP::origin>)
+  constexpr quantity_point(const QP& qp) : q_{qp.relative()} {}
 
   quantity_point& operator=(const quantity_point&) = default;
   quantity_point& operator=(quantity_point&&) = default;
@@ -138,7 +144,7 @@ public:
   {
     const auto q = lhs.relative() + rhs;
     using q_type = decltype(q);
-    return quantity_point<typename q_type::dimension, typename q_type::unit, typename q_type::rep>(q);
+    return quantity_point<typename q_type::dimension, typename q_type::unit, typename q_type::rep, origin>(q);
   }
 
   template<Quantity Q>
@@ -154,10 +160,10 @@ public:
   {
     const auto q = lhs.relative() - rhs;
     using q_type = decltype(q);
-    return quantity_point<typename q_type::dimension, typename q_type::unit, typename q_type::rep>(q);
+    return quantity_point<typename q_type::dimension, typename q_type::unit, typename q_type::rep, origin>(q);
   }
 
-  template<QuantityPoint QP>
+  template<QuantityPoint QP> requires std::is_same_v<typename QP::origin, origin>
   [[nodiscard]] friend constexpr Quantity auto operator-(const quantity_point& lhs, const QP& rhs)
     requires requires { lhs.relative() - rhs.relative(); }
   {
@@ -165,14 +171,16 @@ public:
   }
 
   template<QuantityPoint QP>
-    requires std::three_way_comparable_with<quantity_type, typename QP::quantity_type>
+    requires (std::three_way_comparable_with<quantity_type, typename QP::quantity_type>
+        && std::is_same_v<origin, typename QP::origin>)
   [[nodiscard]] friend constexpr auto operator<=>(const quantity_point& lhs, const QP& rhs)
   {
     return lhs.relative() <=> rhs.relative();
   }
 
   template<QuantityPoint QP>
-    requires std::equality_comparable_with<quantity_type, typename QP::quantity_type>
+    requires (std::three_way_comparable_with<quantity_type, typename QP::quantity_type>
+              && std::is_same_v<origin, typename QP::origin>)
   [[nodiscard]] friend constexpr bool operator==(const quantity_point& lhs, const QP& rhs)
   {
     return lhs.relative() == rhs.relative();
@@ -190,12 +198,19 @@ quantity_point(Q) -> quantity_point<typename quantity_like_traits<Q>::dimension,
 template<QuantityPointLike QP>
 explicit quantity_point(QP) -> quantity_point<typename quantity_point_like_traits<QP>::dimension,
                                               typename quantity_point_like_traits<QP>::unit,
-                                              typename quantity_point_like_traits<QP>::rep>;
+                                              typename quantity_point_like_traits<QP>::rep,
+                                              typename quantity_point_like_traits<QP>::origin>;
+
+
+template <PointOrigin Orig, Dimension D, UnitOf<D> U, QuantityValue Rep>
+inline constexpr quantity_point<D, U, Rep, Orig> absolute(const quantity<D,U,Rep> &q) noexcept {
+  return quantity_point<D, U, Rep, Orig>(q);
+}
 
 namespace detail {
 
-template<typename D, typename U, typename Rep>
-inline constexpr bool is_quantity_point<quantity_point<D, U, Rep>> = true;
+template<typename D, typename U, typename Rep, typename Orig>
+inline constexpr bool is_quantity_point<quantity_point<D, U, Rep, Orig>> = true;
 
 }  // namespace detail
 
